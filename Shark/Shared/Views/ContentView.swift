@@ -11,13 +11,20 @@ struct ContentView: View {
                 FeedView()
             }
 
-            Tab("Upload", systemImage: "plus.circle.fill", value: 1) {
+            Tab("Map", systemImage: "map.fill", value: 1) {
+                MapView()
+            }
+
+            Tab("Upload", systemImage: "plus.circle.fill", value: 2) {
                 UploadView()
             }
         }
         .onChange(of: selectedTab) { _, newValue in
-            if newValue == 1 && !authManager.isAuthenticated {
+            if (newValue == 1 || newValue == 2) && !authManager.isAuthenticated {
                 showLoginSheet = true
+                withAnimation {
+                    selectedTab = 0
+                }
             }
         }
         .sheet(isPresented: $showLoginSheet) {
