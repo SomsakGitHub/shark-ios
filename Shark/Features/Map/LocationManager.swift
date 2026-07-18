@@ -35,6 +35,7 @@ final class LocationManager: NSObject, CLLocationManagerDelegate {
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let newLocation = locations.last else { return }
+        print("📍 Location: lat \(newLocation.coordinate.latitude), lon \(newLocation.coordinate.longitude)")
         location = newLocation
         manager.stopUpdatingLocation()
     }

@@ -8,7 +8,10 @@ struct MapView: View {
         span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
     ))
     @State private var videos: [FeedVideo] = []
+    @State private var videoCoordinates: [String: CLLocationCoordinate2D] = [:]
     @State private var selectedVideo: FeedVideo?
+
+    private let mockCenter = CLLocationCoordinate2D(latitude: 13.630309274545938, longitude: 100.65888190825626)
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -16,28 +19,30 @@ struct MapView: View {
                 UserAnnotation()
 
                 ForEach(videos) { video in
-                    Annotation(video.user.displayName, coordinate: randomCoordinate(for: video)) {
-                        VStack(spacing: 0) {
-                            AsyncImage(url: URL(string: video.user.avatarUrl)) { image in
-                                image
-                                    .resizable()
-                                    .scaledToFill()
-                            } placeholder: {
-                                Circle()
-                                    .fill(.gray)
-                            }
-                            .frame(width: 40, height: 40)
-                            .clipShape(Circle())
-                            .shadow(radius: 3)
+                    if let coordinate = videoCoordinates[video.id] {
+                        Annotation(video.user.displayName, coordinate: coordinate) {
+                            VStack(spacing: 0) {
+                                AsyncImage(url: URL(string: video.user.avatarUrl)) { image in
+                                    image
+                                        .resizable()
+                                        .scaledToFill()
+                                } placeholder: {
+                                    Circle()
+                                        .fill(.gray)
+                                }
+                                .frame(width: 40, height: 40)
+                                .clipShape(Circle())
+                                .shadow(radius: 3)
 
-                            Image(systemName: "triangle.fill")
-                                .font(.caption)
-                                .foregroundStyle(.white)
-                                .rotationEffect(.degrees(180))
-                                .offset(y: -3)
-                        }
-                        .onTapGesture {
-                            selectedVideo = video
+                                Image(systemName: "triangle.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(.white)
+                                    .rotationEffect(.degrees(180))
+                                    .offset(y: -3)
+                            }
+                            .onTapGesture {
+                                selectedVideo = video
+                            }
                         }
                     }
                 }
@@ -48,13 +53,10 @@ struct MapView: View {
                 MapScaleView()
             }
 
-            if selectedVideo != nil {
-                VStack {
-                    Spacer()
-                    videoPreview
-                }
-                .transition(.move(edge: .bottom))
-                .animation(.easeInOut, value: selectedVideo != nil)
+        }
+        .fullScreenCover(item: $selectedVideo) { video in
+            VideoPlayerScreen(video: video) {
+                selectedVideo = nil
             }
         }
         .task {
@@ -73,52 +75,6 @@ struct MapView: View {
         }
     }
 
-    private var videoPreview: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                AsyncImage(url: URL(string: selectedVideo!.user.avatarUrl)) { image in
-                    image.resizable().scaledToFill()
-                } placeholder: {
-                    Circle().fill(.gray)
-                }
-                .frame(width: 32, height: 32)
-                .clipShape(Circle())
-
-                VStack(alignment: .leading) {
-                    Text(selectedVideo!.user.displayName)
-                        .font(.headline)
-                    Text("@\(selectedVideo!.user.username)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                Button {
-                    selectedVideo = nil
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            HStack {
-                Label("\(selectedVideo!.likeCount) likes", systemImage: "heart.fill")
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                Spacer()
-                Label("\(selectedVideo!.durationMs / 1000)s", systemImage: "clock")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding()
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .padding()
-    }
-
     private func centerOnUserLocation() {
         guard let location = locationManager.location else { return }
         withAnimation {
@@ -132,17 +88,21 @@ struct MapView: View {
     private func loadVideos() async {
         do {
             let response = try await FeedService.shared.fetchFeed()
-            videos = response.videos
+            videos = Array(response.videos.prefix(10))
+            generateMockCoordinates()
         } catch {
             print("Failed to load videos for map: \(error)")
         }
     }
 
-    private func randomCoordinate(for video: FeedVideo) -> CLLocationCoordinate2D {
-        let hash = abs(video.id.hashValue)
-        let lat = Double(hash % 1800 - 900) / 10.0
-        let lon = Double((hash / 1800) % 3600 - 1800) / 10.0
-        return CLLocationCoordinate2D(latitude: lat, longitude: lon)
+    private func generateMockCoordinates() {
+        for (index, video) in videos.enumerated() {
+            let angle = (Double(index) / Double(videos.count)) * 2 * .pi
+            let radius = Double.random(in: 0.005...0.02)
+            let lat = mockCenter.latitude + radius * cos(angle)
+            let lon = mockCenter.longitude + radius * sin(angle)
+            videoCoordinates[video.id] = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+        }
     }
 }
 
