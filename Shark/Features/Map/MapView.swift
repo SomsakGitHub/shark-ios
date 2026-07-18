@@ -3,7 +3,10 @@ import MapKit
 
 struct MapView: View {
     @Environment(LocationManager.self) private var locationManager
-    @State private var position: MapCameraPosition = .automatic
+    @State private var position: MapCameraPosition = .region(MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: 13.7563, longitude: 100.5018),
+        span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
+    ))
     @State private var videos: [FeedVideo] = []
     @State private var selectedVideo: FeedVideo?
 
@@ -56,16 +59,17 @@ struct MapView: View {
         }
         .task {
             await loadVideos()
+            if let location = locationManager.location {
+                centerOnUserLocation()
+            }
         }
         .onChange(of: locationManager.authorizationStatus) { _, newStatus in
             if newStatus == .authorizedWhenInUse || newStatus == .authorized {
-                centerOnUserLocation()
+                locationManager.startUpdating()
             }
         }
-        .onChange(of: locationManager.location) { _, newLocation in
-            if newLocation != nil {
-                centerOnUserLocation()
-            }
+        .onChange(of: locationManager.location) { _, _ in
+            centerOnUserLocation()
         }
     }
 
@@ -120,7 +124,7 @@ struct MapView: View {
         withAnimation {
             position = .region(MKCoordinateRegion(
                 center: location.coordinate,
-                span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+                span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
             ))
         }
     }
