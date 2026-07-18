@@ -1,11 +1,11 @@
 import SwiftUI
-import AuthenticationServices
-import CryptoKit
 
 struct LoginPromptSheet: View {
     @Environment(AuthManager.self) private var authManager
     @Environment(\.dismiss) private var dismiss
-    @State private var currentNonce: String?
+    @State private var isLoading = false
+
+    var onLoginSuccess: (() -> Void)?
 
     var body: some View {
         VStack(spacing: 24) {
@@ -23,7 +23,7 @@ struct LoginPromptSheet: View {
             Text("Sign in Required")
                 .font(.title2.bold())
 
-            Text("You need to sign in to upload videos")
+            Text("You need to sign in to access this feature")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
@@ -31,20 +31,26 @@ struct LoginPromptSheet: View {
             Spacer()
 
             VStack(spacing: 12) {
-                SignInWithAppleButton(.signIn) { request in
-                    let nonce = randomNonceString()
-                    currentNonce = nonce
-                    request.nonce = sha256(nonce)
-                    request.requestedScopes = [.fullName, .email]
-                } onCompletion: { result in
-                    Task {
-                        await authManager.handleAppleSignIn(result: result)
-                        dismiss()
+                if isLoading {
+                    ProgressView("Signing in...")
+                        .frame(height: 50)
+                } else {
+                    Button {
+                        mockSignIn()
+                    } label: {
+                        HStack {
+                            Image(systemName: "person.fill.checkmark")
+                                .font(.title3)
+                            Text("Sign in (Demo)")
+                                .font(.headline)
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.black)
                     }
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .signInWithAppleButtonStyle(.black)
-                .frame(height: 50)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
 
                 Button("Cancel") {
                     dismiss()
@@ -58,25 +64,15 @@ struct LoginPromptSheet: View {
         .presentationDetents([.medium])
     }
 
-    private func randomNonceString(length: Int = 32) -> String {
-        let charset: [Character] = Array("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-        var result = ""
-        var remaining = length
-        while remaining > 0 {
-            var random: UInt8 = 0
-            _ = SecRandomCopyBytes(kSecRandomDefault, 1, &random)
-            if random < charset.count {
-                result.append(charset[Int(random)])
-                remaining -= 1
-            }
+    private func mockSignIn() {
+        isLoading = true
+        Task {
+            authManager.mockSignIn()
+            try? await Task.sleep(for: .milliseconds(500))
+            isLoading = false
+            dismiss()
+            onLoginSuccess?()
         }
-        return result
-    }
-
-    private func sha256(_ input: String) -> String {
-        let inputData = Data(input.utf8)
-        let hashed = SHA256.hash(data: inputData)
-        return hashed.map { String(format: "%02x", $0) }.joined()
     }
 }
 

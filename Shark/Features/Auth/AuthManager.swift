@@ -44,12 +44,12 @@ final class AuthManager {
         }
     }
 
-    func handleAppleSignIn(result: Result<ASAuthorization, Error>) async {
+    func handleAppleSignIn(result: Result<ASAuthorization, Error>) async -> Bool {
         switch result {
         case .success(let authorization):
-            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else { return }
+            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else { return false }
             guard let identityTokenData = credential.identityToken,
-                  let identityToken = String(data: identityTokenData, encoding: .utf8) else { return }
+                  let identityToken = String(data: identityTokenData, encoding: .utf8) else { return false }
 
             do {
                 let authResponse = try await AuthService.authenticate(
@@ -76,17 +76,33 @@ final class AuthManager {
                     name: authResponse.name ?? KeychainService.read(key: userNameKey)
                 )
                 isAuthenticated = true
+                return true
             } catch {
                 print("Auth failed: \(error)")
+                return false
             }
 
         case .failure(let error):
             if let authError = error as? ASAuthorizationError,
                authError.code == .canceled {
-                return
+                return false
             }
             print("Apple Sign In error: \(error)")
+            return false
         }
+    }
+
+    func mockSignIn() {
+        let mockUserId = "mock_user_\(UUID().uuidString)"
+        let mockToken = "mock_jwt_token_\(UUID().uuidString)"
+
+        KeychainService.save(key: tokenKey, value: mockToken)
+        KeychainService.save(key: userIdKey, value: mockUserId)
+        KeychainService.save(key: userEmailKey, value: "demo@shark.app")
+        KeychainService.save(key: userNameKey, value: "Demo User")
+
+        user = AuthUser(id: mockUserId, email: "demo@shark.app", name: "Demo User")
+        isAuthenticated = true
     }
 
     func signOut() {

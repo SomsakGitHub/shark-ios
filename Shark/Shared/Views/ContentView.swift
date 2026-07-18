@@ -4,6 +4,7 @@ struct ContentView: View {
     @Environment(AuthManager.self) private var authManager
     @State private var selectedTab = 0
     @State private var showLoginSheet = false
+    @State private var pendingTab: Int?
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -20,15 +21,19 @@ struct ContentView: View {
             }
         }
         .onChange(of: selectedTab) { _, newValue in
-            if (newValue == 1 || newValue == 2) && !authManager.isAuthenticated {
+            guard !authManager.isAuthenticated else { return }
+            if newValue == 1 || newValue == 2 {
+                pendingTab = newValue
                 showLoginSheet = true
-                withAnimation {
-                    selectedTab = 0
-                }
+                selectedTab = 0
             }
         }
         .sheet(isPresented: $showLoginSheet) {
-            LoginPromptSheet()
+            LoginPromptSheet {
+                guard let tab = pendingTab else { return }
+                selectedTab = tab
+                pendingTab = nil
+            }
         }
     }
 }
