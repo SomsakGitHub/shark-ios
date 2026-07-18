@@ -2,6 +2,7 @@ import SwiftUI
 import MapKit
 
 struct MapView: View {
+    @Environment(LocationManager.self) private var locationManager
     @State private var position: MapCameraPosition = .automatic
     @State private var videos: [FeedVideo] = []
     @State private var selectedVideo: FeedVideo?
@@ -9,6 +10,8 @@ struct MapView: View {
     var body: some View {
         ZStack(alignment: .top) {
             Map(position: $position) {
+                UserAnnotation()
+
                 ForEach(videos) { video in
                     Annotation(video.user.displayName, coordinate: randomCoordinate(for: video)) {
                         VStack(spacing: 0) {
@@ -53,6 +56,16 @@ struct MapView: View {
         }
         .task {
             await loadVideos()
+        }
+        .onChange(of: locationManager.authorizationStatus) { _, newStatus in
+            if newStatus == .authorizedWhenInUse || newStatus == .authorized {
+                centerOnUserLocation()
+            }
+        }
+        .onChange(of: locationManager.location) { _, newLocation in
+            if newLocation != nil {
+                centerOnUserLocation()
+            }
         }
     }
 
@@ -102,6 +115,16 @@ struct MapView: View {
         .padding()
     }
 
+    private func centerOnUserLocation() {
+        guard let location = locationManager.location else { return }
+        withAnimation {
+            position = .region(MKCoordinateRegion(
+                center: location.coordinate,
+                span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+            ))
+        }
+    }
+
     private func loadVideos() async {
         do {
             let response = try await FeedService.shared.fetchFeed()
@@ -121,4 +144,5 @@ struct MapView: View {
 
 #Preview {
     MapView()
+        .environment(LocationManager())
 }
