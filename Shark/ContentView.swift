@@ -1,9 +1,15 @@
 import SwiftUI
-import SwiftData
 
 struct ContentView: View {
     var body: some View {
-        FeedView()
+        TabView {
+            Tab("Home", systemImage: "house.fill") {
+                FeedView()
+            }
+            Tab("Upload", systemImage: "plus.circle.fill") {
+                UploadView()
+            }
+        }
     }
 }
 
