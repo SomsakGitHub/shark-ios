@@ -5,6 +5,7 @@ struct FeedView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var selectedIndex = 0
+    @State private var selectedUser: FeedUser?
     
     var body: some View {
         ZStack {
@@ -30,7 +31,9 @@ struct FeedView: View {
             } else {
                 TabView(selection: $selectedIndex) {
                     ForEach(Array(videos.enumerated()), id: \.element.id) { index, video in
-                        VideoCardView(video: video)
+                        VideoCardView(video: video) {
+                            selectedUser = video.user
+                        }
                             .tag(index)
                     }
                 }
@@ -40,6 +43,9 @@ struct FeedView: View {
         }
         .task {
             await loadFeed()
+        }
+        .sheet(item: $selectedUser) { user in
+            ProfileView(user: user)
         }
     }
     
@@ -60,6 +66,7 @@ struct FeedView: View {
 
 struct VideoCardView: View {
     let video: FeedVideo
+    var onUserTap: (() -> Void)?
     @State private var isPlaying = true
     @State private var showLikeAnimation = false
     
@@ -82,23 +89,27 @@ struct VideoCardView: View {
                     
                     HStack(alignment: .bottom) {
                         VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                AsyncImage(url: URL(string: video.user.avatarUrl)) { image in
-                                    image
-                                        .resizable()
-                                        .scaledToFill()
-                                } placeholder: {
-                                    Circle()
-                                        .fill(Color.gray)
+                            Button {
+                                onUserTap?()
+                            } label: {
+                                HStack {
+                                    AsyncImage(url: URL(string: video.user.avatarUrl)) { image in
+                                        image
+                                            .resizable()
+                                            .scaledToFill()
+                                    } placeholder: {
+                                        Circle()
+                                            .fill(Color.gray)
+                                    }
+                                    .frame(width: 40, height: 40)
+                                    .clipShape(Circle())
+
+                                    Text("@\(video.user.username)")
+                                        .font(.headline)
+                                        .foregroundColor(.white)
                                 }
-                                .frame(width: 40, height: 40)
-                                .clipShape(Circle())
-                                
-                                Text("@\(video.user.username)")
-                                    .font(.headline)
-                                    .foregroundColor(.white)
                             }
-                            
+
                             Text(video.user.displayName)
                                 .font(.subheadline)
                                 .foregroundColor(.white.opacity(0.8))

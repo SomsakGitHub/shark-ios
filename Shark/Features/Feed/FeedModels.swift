@@ -21,7 +21,7 @@ struct FeedVideo: Codable, Identifiable {
     let likeCount: Int
 }
 
-struct FeedUser: Codable {
+struct FeedUser: Codable, Identifiable {
     let id: String
     let username: String
     let displayName: String
