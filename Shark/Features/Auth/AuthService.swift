@@ -1,32 +1,34 @@
 import Foundation
 
 struct AuthService {
-    private static let baseURL = "https://marauders-api.khamthan02.workers.dev"
-
     static func authenticate(
         identityToken: String,
         email: String?,
         fullName: PersonNameComponents?
     ) async throws -> AuthResponse {
         // TODO: Replace with real backend call when /auth/apple is ready
-        // var request = URLRequest(url: URL(string: "\(baseURL)/auth/apple")!)
-        // request.httpMethod = "POST"
-        // request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        // let body: [String: Any] = [
-        //     "identityToken": identityToken,
-        //     "email": email ?? "",
-        //     "fullName": [
-        //         "givenName": fullName?.givenName ?? "",
-        //         "familyName": fullName?.familyName ?? ""
-        //     ]
-        // ]
-        // request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        // let (data, response) = try await URLSession.shared.data(for: request)
-        // guard let httpResponse = response as? HTTPURLResponse,
-        //       httpResponse.statusCode == 200 else {
-        //     throw AuthError.serverError
+        // struct AuthAppleRequest: Encodable {
+        //     let identityToken: String
+        //     let email: String?
+        //     let fullName: FullName?
+        //     struct FullName: Encodable {
+        //         let givenName: String?
+        //         let familyName: String?
+        //     }
         // }
-        // return try JSONDecoder().decode(AuthResponse.self, from: data)
+        // let body = AuthAppleRequest(
+        //     identityToken: identityToken,
+        //     email: email,
+        //     fullName: AuthAppleRequest.FullName(
+        //         givenName: fullName?.givenName,
+        //         familyName: fullName?.familyName
+        //     )
+        // )
+        // return try await NetworkManager.shared.request(
+        //     .authApple,
+        //     body: body,
+        //     responseType: AuthResponse.self
+        // )
 
         // Mock response
         try await Task.sleep(for: .seconds(1))
