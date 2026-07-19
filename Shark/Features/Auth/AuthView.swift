@@ -33,6 +33,7 @@ struct AuthView: View {
                     SignInWithAppleButton(.signIn) { request in
                         let nonce = randomNonceString()
                         currentNonce = nonce
+                        authManager.setNonce(nonce)
                         request.nonce = sha256(nonce)
                         request.requestedScopes = [.fullName, .email]
                     } onCompletion: { result in

@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		068A5571300CC605000F3016 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = AA000002000000000000001A /* FirebaseAuth */; };
+		068A5572300CC605000F3016 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = AA000003000000000000001A /* FirebaseCore */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		067176B1300A967F006FF665 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +57,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				068A5572300CC605000F3016 /* FirebaseCore in Frameworks */,
+				068A5571300CC605000F3016 /* FirebaseAuth in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +119,8 @@
 			);
 			name = Shark;
 			packageProductDependencies = (
+				AA000002000000000000001A /* FirebaseAuth */,
+				AA000003000000000000001A /* FirebaseCore */,
 			);
 			productName = Shark;
 			productReference = 067176A1300A967D006FF665 /* Shark.app */;
@@ -195,6 +204,9 @@
 			);
 			mainGroup = 06717698300A967D006FF665;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				AA000001000000000000001A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 067176A2300A967D006FF665 /* Products */;
 			projectDirPath = "";
@@ -395,6 +407,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Shark/Shark.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 9U8PYJFN94;
@@ -432,6 +445,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Shark/Shark.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 9U8PYJFN94;
@@ -588,6 +602,30 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		AA000001000000000000001A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AA000002000000000000001A /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AA000001000000000000001A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		AA000003000000000000001A /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AA000001000000000000001A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 06717699300A967D006FF665 /* Project object */;
 }

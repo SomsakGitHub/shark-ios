@@ -1,12 +1,5 @@
 import Foundation
 
-struct AuthResponse: Codable {
-    let token: String
-    let email: String?
-    let name: String?
-    let userId: String?
-}
-
 struct AuthUser: Identifiable {
     let id: String
     let email: String?

@@ -1,5 +1,6 @@
 import Foundation
 import AuthenticationServices
+import FirebaseAuth
 
 @Observable
 @MainActor
@@ -8,38 +9,37 @@ final class AuthManager {
     var user: AuthUser?
     var isLoading = true
 
-    private let tokenKey = "auth_token"
-    private let userIdKey = "apple_user_id"
-    private let userEmailKey = "user_email"
-    private let userNameKey = "user_name"
+    nonisolated(unsafe) private var authStateHandle: AuthStateDidChangeListenerHandle?
+    private var currentNonce: String?
 
     init() {
-        restoreSession()
+        startListeningAuthState()
     }
 
-    func restoreSession() {
-        guard let userId = KeychainService.read(key: userIdKey) else {
-            isLoading = false
-            return
+    deinit {
+        if let handle = authStateHandle {
+            Auth.auth().removeStateDidChangeListener(handle)
         }
+    }
 
-        let provider = ASAuthorizationAppleIDProvider()
-        provider.getCredentialState(forUserID: userId) { [weak self] state, _ in
-            Task { @MainActor in
-                switch state {
-                case .authorized:
-                    self?.user = AuthUser(
-                        id: userId,
-                        email: KeychainService.read(key: self?.userEmailKey ?? ""),
-                        name: KeychainService.read(key: self?.userNameKey ?? "")
+    private func startListeningAuthState() {
+        authStateHandle = Auth.auth().addStateDidChangeListener { [weak self] _, firebaseUser in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if let firebaseUser {
+                    self.user = AuthUser(
+                        id: firebaseUser.uid,
+                        email: firebaseUser.email,
+                        name: firebaseUser.displayName
                     )
-                    self?.isAuthenticated = true
-                case .revoked, .notFound:
-                    self?.signOut()
-                default:
-                    break
+                    self.isAuthenticated = true
+                    print("👤 Auth state: Signed in as \(firebaseUser.uid)")
+                } else {
+                    self.user = nil
+                    self.isAuthenticated = false
+                    print("👤 Auth state: Signed out")
                 }
-                self?.isLoading = false
+                self.isLoading = false
             }
         }
     }
@@ -47,38 +47,47 @@ final class AuthManager {
     func handleAppleSignIn(result: Result<ASAuthorization, Error>) async -> Bool {
         switch result {
         case .success(let authorization):
-            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else { return false }
+            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
+                return false
+            }
             guard let identityTokenData = credential.identityToken,
-                  let identityToken = String(data: identityTokenData, encoding: .utf8) else { return false }
+                  let identityToken = String(data: identityTokenData, encoding: .utf8) else {
+                return false
+            }
+            guard let nonce = currentNonce else {
+                print("Firebase Auth Error: nonce is missing")
+                return false
+            }
+
+            let firebaseCredential = OAuthProvider.credential(
+                providerID: AuthProviderID.apple,
+                idToken: identityToken,
+                rawNonce: nonce
+            )
 
             do {
-                let authResponse = try await AuthService.authenticate(
-                    identityToken: identityToken,
-                    email: credential.email,
-                    fullName: credential.fullName
-                )
+                let authResult = try await Auth.auth().signIn(with: firebaseCredential)
 
-                KeychainService.save(key: tokenKey, value: authResponse.token)
-                KeychainService.save(key: userIdKey, value: credential.user)
-                if let email = credential.email {
-                    KeychainService.save(key: userEmailKey, value: email)
-                }
-                if let name = credential.fullName {
-                    let fullName = "\(name.givenName ?? "") \(name.familyName ?? "")".trimmingCharacters(in: .whitespaces)
-                    if !fullName.isEmpty {
-                        KeychainService.save(key: userNameKey, value: fullName)
+                if let fullName = credential.fullName {
+                    let displayName = "\(fullName.givenName ?? "") \(fullName.familyName ?? "")"
+                        .trimmingCharacters(in: .whitespaces)
+                    if !displayName.isEmpty {
+                        let changeRequest = authResult.user.createProfileChangeRequest()
+                        changeRequest.displayName = displayName
+                        try await changeRequest.commitChanges()
                     }
                 }
 
-                user = AuthUser(
-                    id: credential.user,
-                    email: authResponse.email ?? KeychainService.read(key: userEmailKey),
-                    name: authResponse.name ?? KeychainService.read(key: userNameKey)
-                )
-                isAuthenticated = true
+                let idToken = try await authResult.user.getIDToken()
+                print("✅ Firebase Sign In succeeded")
+                print("   UID: \(authResult.user.uid)")
+                print("   Email: \(authResult.user.email ?? "N/A")")
+                print("   Display Name: \(authResult.user.displayName ?? "N/A")")
+                print("   Firebase ID Token: \(idToken)")
+
                 return true
             } catch {
-                print("Auth failed: \(error)")
+                print("❌ Firebase Auth failed: \(error.localizedDescription)")
                 return false
             }
 
@@ -87,34 +96,31 @@ final class AuthManager {
                authError.code == .canceled {
                 return false
             }
-            print("Apple Sign In error: \(error)")
+            print("Apple Sign In error: \(error.localizedDescription)")
             return false
         }
     }
 
-    func mockSignIn() {
-        let mockUserId = "mock_user_\(UUID().uuidString)"
-        let mockToken = "mock_jwt_token_\(UUID().uuidString)"
-
-        KeychainService.save(key: tokenKey, value: mockToken)
-        KeychainService.save(key: userIdKey, value: mockUserId)
-        KeychainService.save(key: userEmailKey, value: "demo@shark.app")
-        KeychainService.save(key: userNameKey, value: "Demo User")
-
-        user = AuthUser(id: mockUserId, email: "demo@shark.app", name: "Demo User")
-        isAuthenticated = true
+    func setNonce(_ nonce: String) {
+        currentNonce = nonce
     }
 
     func signOut() {
-        KeychainService.delete(key: tokenKey)
-        KeychainService.delete(key: userIdKey)
-        KeychainService.delete(key: userEmailKey)
-        KeychainService.delete(key: userNameKey)
-        user = nil
-        isAuthenticated = false
+        do {
+            try Auth.auth().signOut()
+            print("👋 Signed out successfully")
+        } catch {
+            print("❌ Sign out error: \(error.localizedDescription)")
+        }
     }
 
-    func getAuthToken() -> String? {
-        KeychainService.read(key: tokenKey)
+    func getIDToken() async -> String? {
+        guard let user = Auth.auth().currentUser else { return nil }
+        do {
+            return try await user.getIDToken()
+        } catch {
+            print("Failed to get ID token: \(error.localizedDescription)")
+            return nil
+        }
     }
 }

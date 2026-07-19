@@ -1,4 +1,5 @@
 import Foundation
+import FirebaseAuth
 
 actor NetworkManager {
     static let shared = NetworkManager()
@@ -22,6 +23,21 @@ actor NetworkManager {
         self.encoder.dateEncodingStrategy = .iso8601
     }
 
+    private func getAuthToken() async -> String? {
+        guard let user = Auth.auth().currentUser else {
+            print("⚠️ NetworkManager: No authenticated user")
+            return nil
+        }
+        do {
+            let token = try await user.getIDToken()
+            print("🔑 NetworkManager: ID Token obtained (length: \(token.count))")
+            return token
+        } catch {
+            print("❌ NetworkManager: Failed to get ID token: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
     func request<T: Decodable>(
         _ endpoint: APIEndpoint,
         responseType: T.Type
@@ -35,7 +51,7 @@ actor NetworkManager {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        if let token = KeychainService.read(key: "auth_token") {
+        if let token = await getAuthToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
@@ -85,7 +101,7 @@ actor NetworkManager {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        if let token = KeychainService.read(key: "auth_token") {
+        if let token = await getAuthToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
@@ -134,7 +150,7 @@ actor NetworkManager {
         request.httpMethod = endpoint.method.rawValue
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        if let token = KeychainService.read(key: "auth_token") {
+        if let token = await getAuthToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
