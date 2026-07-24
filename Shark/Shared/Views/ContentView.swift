@@ -21,6 +21,10 @@ struct ContentView: View {
                 Tab("Upload", systemImage: "plus.circle.fill", value: 2) {
                     UploadView()
                 }
+
+                Tab("Profile", systemImage: "person.fill", value: 3) {
+                    AccountProfileView()
+                }
             }
             .onChange(of: selectedTab) { _, newValue in
                 guard !authManager.isAuthenticated else { return }
